@@ -35,11 +35,3 @@ class Address(Base):
     def __repr__(self) -> str:
         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-
-
-def main():
-    print("Hello from payment-infra!")
-
-
-if __name__ == "__main__":
-    main()

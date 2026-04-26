@@ -1,0 +1,68 @@
+services:
+    postgres:
+        image: postgres:16
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: payments
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+    
+    redis:
+        image: redis:7
+        ports:
+            - "6379:6379"
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+    
+    router:
+        build: ./router
+        ports:
+            - "8001:8001"
+        environment:
+            DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/payments
+            REDIS_URL: redis://redis:6379
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    providers:
+        build: ./providers
+        ports:
+            - "8002:8002"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+
+    gateway:
+        build: ./gateway
+        ports:
+            - "8003:8003"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    fraud:
+        build: ./fraud
+        ports:
+            - "8004:8004"
+        depends_on:
+            postgres:
+                condition: service_healthy
+                
+volumes:
+    postgres_data:

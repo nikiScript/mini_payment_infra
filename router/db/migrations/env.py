@@ -9,6 +9,12 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 
+context.configure(
+    include_schemas=True
+)
+
+
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -18,7 +24,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from main import Base
+from router.db.migrations.schemas.base import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
