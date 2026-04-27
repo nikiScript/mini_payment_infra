@@ -1,9 +1,11 @@
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+from sqlalchemy import pool, text
 from alembic import context
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(__file__))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,7 +20,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from router.db.migrations.schemas.base import Base
+from schemas.merchants import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -50,6 +52,11 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+# to exclude other schemas
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        return object.schema == "merchants"
+    return True
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
@@ -65,8 +72,17 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS merchants"))
+        connection.commit()
+
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            version_table="alembic_version",
+            include_object=include_object,
+            version_table_schema="merchants",
         )
 
         with context.begin_transaction():

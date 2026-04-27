@@ -13,8 +13,7 @@ from sqlalchemy.orm import relationship
 class Provider(enum.Enum):
     stripe = "stripe_mock"
     paypal = "paypal_mock"
-    adyen = "ayden_mock"
-
+    adyen = "adyen_mock"
 
 class Base(DeclarativeBase):
     pass
@@ -42,7 +41,7 @@ class Transaction(Base):
 
 class RoutingDecisions(Base):
     __tablename__ = "routing_decisions"
-    __table_args__ = {"schema": "routing"}
+    __table_args__ = {"schema": "payments"}
     transaction = relationship("Transaction", back_populates="routing_decisions")
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -61,7 +60,7 @@ class RoutingDecisions(Base):
 
 class ProviderStats(Base):
     __tablename__ = "provider_stats"
-    __table_args__ = {"schema": "stats"}
+    __table_args__ = {"schema": "payments"}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
