@@ -13,8 +13,6 @@ class Provider(enum.Enum):
     paypal = "paypal_mock"
     adyen = "ayden_mock"
 
-
-
 class Base(DeclarativeBase):
     pass
 
@@ -42,7 +40,7 @@ class ApiKey(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    merchant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("merchants.merchants.id"))
+    merchant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("merchants.merchants.id"), nullable=False)
     key_hash: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime,

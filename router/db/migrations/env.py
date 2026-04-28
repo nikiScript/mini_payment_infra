@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # access to the values within the .ini file in use.
 config = context.config
 # db url
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL_SYNC"])
+config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL_SYNC_LOCAL"])
 
 
 # Interpret the config file for Python logging.

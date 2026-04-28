@@ -1,13 +1,11 @@
+from fastapi import FastAPI, HTTPException
 
-from fastapi import FastAPI, APIRouter, HTTPException
-
-from adyen import AdyenProvider
-from base import ChargeRequest, ChargeResponse
-from paypal import PayPalProvider
-from stripe import StripeProvider
+from Adyen import AdyenProvider
+from Base import ChargeRequest, ChargeResponse
+from Paypal import PayPalProvider
+from Stripe import StripeProvider
 
 app = FastAPI()
-router = APIRouter()
 
 PROVIDERS = {
     "paypay": PayPalProvider,
@@ -15,7 +13,7 @@ PROVIDERS = {
     "adyen": AdyenProvider,
 }
 
-@router.post("/charges/{provider}", response_model=ChargeResponse)
+@app.post("/charges/{provider}", response_model=ChargeResponse)
 async def charge(provider: str, req: ChargeRequest):
     provider_cls = PROVIDERS.get(provider)
 
@@ -24,5 +22,3 @@ async def charge(provider: str, req: ChargeRequest):
 
     instance = provider_cls()
     return await instance.charge(req)
-
-app.include_router(router)
