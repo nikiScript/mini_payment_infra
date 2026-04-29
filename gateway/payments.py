@@ -33,4 +33,4 @@ async def payments(
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
 
-    return {"status": "authorized", "merchant_id": api_key_record.merchant_id}
+    return {"status": "authorized", "merchant_id": api_key_record.merchant_id, "PaymentRequest": req}

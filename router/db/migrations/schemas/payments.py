@@ -9,11 +9,9 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from router.router import Provider
 
-class Provider(enum.Enum):
-    stripe = "stripe_mock"
-    paypal = "paypal_mock"
-    adyen = "adyen_mock"
+
 
 class Base(DeclarativeBase):
     pass
@@ -24,8 +22,6 @@ class Transaction(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     merchant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    routing_decisions = relationship("RoutingDecisions", back_populates="transaction")
-
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     country: Mapped[str] = mapped_column(String(2), nullable=False)
@@ -42,7 +38,6 @@ class Transaction(Base):
 class RoutingDecisions(Base):
     __tablename__ = "routing_decisions"
     __table_args__ = {"schema": "payments"}
-    transaction = relationship("Transaction", back_populates="routing_decisions")
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     transaction_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payments.transactions.id"))
