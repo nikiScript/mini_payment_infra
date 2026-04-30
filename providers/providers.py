@@ -8,7 +8,7 @@ from Stripe import StripeProvider
 app = FastAPI()
 
 PROVIDERS = {
-    "paypay": PayPalProvider,
+    "paypal": PayPalProvider,
     "stripe": StripeProvider,
     "adyen": AdyenProvider,
 }

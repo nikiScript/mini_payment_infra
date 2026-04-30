@@ -1,24 +1,34 @@
 import enum
-from typing import List
+import time
+import os
+from typing import List, Optional
+
+import httpx
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gateway.payments import PaymentRequest
 from db.queries.routing_queries import create_routing_decision
 from db.queries.stats_queries import query_stats
-from db.queries.transaction_queries import register_transaction
+from db.queries.transaction_queries import register_transaction, update_transaction_status
+from operator import itemgetter
 
+from db.queries.stats_queries import update_provider_stats
+
+
+class PaymentRequest(BaseModel):
+    amount: int
+    currency: str
+    country: str
 
 class Provider(enum.Enum):
-    stripe = "stripe_mock"
-    paypal = "paypal_mock"
-    adyen = "adyen_mock"
+    stripe = "stripe"
+    paypal = "paypal"
+    adyen = "adyen"
 
 class RouterResponse(BaseModel):
-    provider: Provider
+    provider: Optional[Provider]
     reason: str
     attempted_providers: List[str]
-
 
 
 async def router(
@@ -26,53 +36,67 @@ async def router(
         payment: PaymentRequest,
         db: AsyncSession
 ):
-
     tx = await register_transaction(merchant_id, payment, db)
-
     stats = await query_stats(db)
+    if not stats:
+        raise Exception("No provider stats available")
+    sorted_providers = sort_providers(stats)
 
-    router_response = choose_provider(payment, stats)
+    attempted = []
+    final_provider = None
+    final_reason = "all providers failed"
 
+    for p in sorted_providers:
+
+        provider_name = p["provider"]
+        attempted.append(provider_name)
+        result = await call_provider(provider_name, payment)
+
+        if result["status"] == "success":
+            final_provider = Provider(provider_name)
+            if len(attempted) == 1:
+                final_reason = f"highest score {p['score']:.3f}"
+            else:
+                final_reason = f"fallback success after {len(attempted)} attempts"
+            await update_transaction_status(tx.id, "success", db)
+            await update_provider_stats(provider_name, True, result["latency_ms"], db)
+            break
+
+        await update_provider_stats(provider_name, False, result["latency_ms"], db)
+
+    # all providers failed
+    else:
+        await update_transaction_status(tx.id, "failed", db)
+
+    router_response = RouterResponse(
+        provider=final_provider,
+        reason=final_reason,
+        attempted_providers=attempted
+    )
+
+    # final write to the RoutingDecision table
     await create_routing_decision(router_response, tx, db)
-
     await db.commit()
 
-    return tx
+    return router_response
 
 
-def choose_provider(payment, stats):
-    pass
-
-from operator import itemgetter
-
-def choose_provider(payment, stats):
+def sort_providers(stats):
     scored = []
 
     for provider_name, s in stats.items():
         score = score_provider(s)
-
-        scored.append({
-            "provider": provider_name,
-            "score": score
-        })
+        scored.append({"provider": provider_name, "score": score})
 
     # best first
     scored.sort(key=itemgetter("score"), reverse=True)
-
-    best = scored[0]
-    second = scored[1:]
-
-    return RouterResponse(
-        provider=best["provider"],
-        reason=f"highest score: {best['score']:.3f}",
-        attempted_providers=[p["provider"] for p in second]
-    )
-
+    return scored
 
 def score_provider(stats_entry):
-    success = stats_entry["success_rate"]            # already 0–1
+    success = stats_entry["success_rate"]
+    # latency needs to be normalized
     latency = 1 / (1 + stats_entry["avg_latency_ms"] / 100)
-    cost = 1 - stats_entry["fee_percentage"]         # lower fee = better
+    cost = 1 - stats_entry["fee_percentage"]
 
     # weighted model
     return (
@@ -81,61 +105,42 @@ def score_provider(stats_entry):
         0.15 * cost
     )
 
-def normalize_latency(latency_ms: float) -> float:
-    return 1 / (1 + latency_ms / 100)
+async def call_provider(
+    provider_name: str,
+    payment: PaymentRequest
+):
+    start = time.monotonic()
 
-def choose_provider(payment: PaymentRequest, stats: dict) -> RouterResponse:
-    best_provider = None
-    best_score = float("-inf")
-    attempted = []
+    PROVIDERS_URL = os.environ.get("PROVIDERS_URL", "http://providers:8002")
+    url = f"{PROVIDERS_URL}/charges/{provider_name}"
 
-    for provider, data in stats.items():
-        attempted.append(provider)
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{url}",
+                json={
+                    "amount": payment.amount,
+                    "currency": payment.currency,
+                },
+                timeout=5,
+            )
 
-        score = (
-            data["success_rate"] * 0.6
-            - (data["avg_latency_ms"] / 1000) * 0.2
-            - data["fee_percentage"] * 0.2
-        )
+            latency_ms = (time.monotonic() - start) * 1000
+            if resp.status_code != 200:
+                return {
+                    "status": "failed",
+                    "reason": f"http_{resp.status_code}",
+                    "latency_ms": latency_ms
+                }
 
-        if score > best_score:
-            best_score = score
-            best_provider = provider
+            data = resp.json()
+            data["latency_ms"] = latency_ms
+            return data
 
-    return RouterResponse(
-        provider=best_provider,
-        reason=f"highest score ({best_score:.3f})",
-        attempted_providers=attempted,
-    )
+        except httpx.TimeoutException:
+            return {"status": "failed", "reason": "timeout", "latency_ms": 5000}
+        except httpx.ConnectError:
+            return {"status": "failed", "reason": "provider_unreachable", "latency_ms": 0}
+        except Exception as e:
+            return {"status": "failed", "reason": str(e), "latency_ms": 0}
 
-def choose_provider(payment, stats):
-    best_provider = None
-    best_score = -1
-    attempted = []
-
-    for provider, stat in stats.items():
-        success = stat["success_rate"]
-        latency = stat["avg_latency_ms"]
-        fee = stat["fee_percentage"]
-
-        # avoid division by zero
-        latency_score = 1 / latency if latency else 0
-        fee_score = 1 / fee if fee else 0
-
-        score = (
-            success * 0.6 +
-            latency_score * 0.3 +
-            fee_score * 0.1
-        )
-
-        attempted.append(provider)
-
-        if score > best_score:
-            best_score = score
-            best_provider = provider
-
-    return RouterResponse(
-        provider=best_provider,
-        reason=f"highest score: {best_score:.4f}",
-        attempted_providers=attempted
-    )
