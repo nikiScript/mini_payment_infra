@@ -1,18 +1,21 @@
 import enum
 import time
 import os
+import httpx
 from typing import List, Optional
 
-import httpx
+
+from fastapi import FastAPI, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from database import get_db
 
-from db.queries.routing_queries import create_routing_decision
-from db.queries.stats_queries import query_stats
-from db.queries.transaction_queries import register_transaction, update_transaction_status
+from routing_queries import create_routing_decision
+from stats_queries import query_stats
+from transaction_queries import register_transaction, update_transaction_status
+from stats_queries import update_provider_stats
 from operator import itemgetter
 
-from db.queries.stats_queries import update_provider_stats
 
 
 class PaymentRequest(BaseModel):
@@ -30,17 +33,22 @@ class RouterResponse(BaseModel):
     reason: str
     attempted_providers: List[str]
 
+app = FastAPI()
 
+@app.post("/router")
 async def router(
-        merchant_id: str,
-        payment: PaymentRequest,
-        db: AsyncSession
+
+        req: PaymentRequest,
+        merchant_id: str = Header(...),
+        db: AsyncSession = Depends(get_db)
 ):
-    tx = await register_transaction(merchant_id, payment, db)
+    print("[ROUTER]: Transaction registered")
+    tx = await register_transaction(merchant_id, req, db)
     stats = await query_stats(db)
     if not stats:
         raise Exception("No provider stats available")
     sorted_providers = sort_providers(stats)
+    print("[ROUTER]: Sorted stats")
 
     attempted = []
     final_provider = None
@@ -48,9 +56,10 @@ async def router(
 
     for p in sorted_providers:
 
+        print(f"[ROUTER]: Trying {p["provider"]}")
         provider_name = p["provider"]
         attempted.append(provider_name)
-        result = await call_provider(provider_name, payment)
+        result = await call_provider(provider_name, req)
 
         if result["status"] == "success":
             final_provider = Provider(provider_name)
@@ -60,6 +69,7 @@ async def router(
                 final_reason = f"fallback success after {len(attempted)} attempts"
             await update_transaction_status(tx.id, "success", db)
             await update_provider_stats(provider_name, True, result["latency_ms"], db)
+            print(f"[ROUTER]: Success with {p["provider"]}")
             break
 
         await update_provider_stats(provider_name, False, result["latency_ms"], db)
@@ -75,6 +85,7 @@ async def router(
     )
 
     # final write to the RoutingDecision table
+    print(f"[ROUTER]: Writing to the RoutingDecision table")
     await create_routing_decision(router_response, tx, db)
     await db.commit()
 
@@ -85,14 +96,14 @@ def sort_providers(stats):
     scored = []
 
     for provider_name, s in stats.items():
-        score = score_provider(s)
+        score = score_providers(s)
         scored.append({"provider": provider_name, "score": score})
 
     # best first
     scored.sort(key=itemgetter("score"), reverse=True)
     return scored
 
-def score_provider(stats_entry):
+def score_providers(stats_entry):
     success = stats_entry["success_rate"]
     # latency needs to be normalized
     latency = 1 / (1 + stats_entry["avg_latency_ms"] / 100)
@@ -109,6 +120,7 @@ async def call_provider(
     provider_name: str,
     payment: PaymentRequest
 ):
+    # start measuring latency
     start = time.monotonic()
 
     PROVIDERS_URL = os.environ.get("PROVIDERS_URL", "http://providers:8002")
@@ -124,7 +136,6 @@ async def call_provider(
                 },
                 timeout=5,
             )
-
             latency_ms = (time.monotonic() - start) * 1000
             if resp.status_code != 200:
                 return {

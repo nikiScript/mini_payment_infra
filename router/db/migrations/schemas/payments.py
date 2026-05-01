@@ -8,10 +8,11 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
-from router.router import Provider
 
-
+class Provider(enum.Enum):
+    stripe = "stripe"
+    paypal = "paypal"
+    adyen = "adyen"
 
 class Base(DeclarativeBase):
     pass

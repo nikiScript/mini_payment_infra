@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from router.db.migrations.schemas.payments import Transaction
+from db.migrations.schemas.payments import Transaction
 from pydantic import BaseModel
 
 class PaymentRequest(BaseModel):

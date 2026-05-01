@@ -1,6 +1,19 @@
+import enum
+from typing import Optional, List
+
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from router.db.migrations.schemas.payments import Transaction, RoutingDecisions
-from router.router import RouterResponse
+from db.migrations.schemas.payments import Transaction, RoutingDecisions
+
+class Provider(enum.Enum):
+    stripe = "stripe"
+    paypal = "paypal"
+    adyen = "adyen"
+
+class RouterResponse(BaseModel):
+    provider: Optional[Provider]
+    reason: str
+    attempted_providers: List[str]
 
 
 # create new router decision

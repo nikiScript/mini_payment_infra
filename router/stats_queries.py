@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from router.db.migrations.schemas.payments import ProviderStats
+from db.migrations.schemas.payments import ProviderStats
 
 # get stats
 async def query_stats(db: AsyncSession):

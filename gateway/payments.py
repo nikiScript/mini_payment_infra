@@ -1,5 +1,7 @@
 import hashlib
+import os
 
+import httpx
 from fastapi import HTTPException, Header, Depends, APIRouter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,5 +34,37 @@ async def payments(
     if not api_key_record:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
+    print("authorized")
+    print("sending to router")
+    router_response = await send_to_router(
+        merchant_id=api_key_record.merchant_id,
+        payment_request=req
+    )
+    return router_response
+    # send to router
 
-    return {"status": "authorized", "merchant_id": api_key_record.merchant_id, "PaymentRequest": req}
+
+async def send_to_router(
+        merchant_id: str,
+        payment_request: PaymentRequest,
+):
+    ROUTER_URL = os.getenv("ROUTER_URL", "http://routing:8001/router")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{ROUTER_URL}",
+                json=payment_request.model_dump(),
+                headers={"Content-Type": "application/json",
+                         "merchant-id": str(merchant_id)
+                         },
+                timeout=5,
+            )
+        except Exception as e:
+            return {"error": str(e)}
+
+        return resp.json()
+
+
+
+
