@@ -39,11 +39,11 @@ async def get_transactions_data(
                 
                 -- suspicious round amounts
                 COUNT(*) FILTER (
-                    WHERE amount % 100 = 0
+                    WHERE amount::int % 100 = 0
                 ) AS round_amount_count
                 
             FROM payments.transactions
-            WHERE merchant_id = :merchant_id::uuid
+            WHERE merchant_id = :merchant_id
                 AND created_at > NOW() - INTERVAL '24 hours'
             '''
         ), {

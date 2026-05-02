@@ -85,7 +85,7 @@ async def send_to_fraud(
                 f"{FRAUD_URL}",
                 json={
                     **payment_request.model_dump(),
-                    "merchant-id": str(merchant_id)
+                    "merchant_id": str(merchant_id)
                 },
                 timeout=5,
             )

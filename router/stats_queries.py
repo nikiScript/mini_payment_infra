@@ -32,7 +32,7 @@ async def update_provider_stats(
         .where(ProviderStats.provider_name == provider_name)
     )
     stats = result.scalar_one_or_none()
-    # if provider is not seeded, skip
+    # check if seeded
     if stats is None:
         return
 

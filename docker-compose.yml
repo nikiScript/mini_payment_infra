@@ -64,6 +64,8 @@ services:
         build: ./fraud
         ports:
             - "8004:8004"
+        env_file:
+            -   .env
         depends_on:
             postgres:
                 condition: service_healthy
