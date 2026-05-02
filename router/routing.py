@@ -1,11 +1,8 @@
-import enum
 import time
 import os
 import httpx
-from typing import List, Optional
 
 from fastapi import FastAPI, Depends, Header
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 
@@ -14,22 +11,8 @@ from stats_queries import query_stats
 from transaction_queries import register_transaction, update_transaction_status
 from stats_queries import update_provider_stats
 from operator import itemgetter
+from models import PaymentRequest, RouterResponse, Provider
 
-
-class PaymentRequest(BaseModel):
-    amount: int
-    currency: str
-    country: str
-
-class Provider(enum.Enum):
-    stripe = "stripe"
-    paypal = "paypal"
-    adyen = "adyen"
-
-class RouterResponse(BaseModel):
-    provider: Optional[Provider]
-    reason: str
-    attempted_providers: List[str]
 
 app = FastAPI()
 

@@ -1,12 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.migrations.schemas.payments import Transaction
-from pydantic import BaseModel
+from models import PaymentRequest
 
-class PaymentRequest(BaseModel):
-    amount: float
-    currency: str
-    country: str
 
 async def register_transaction(
         merchant_id: str,

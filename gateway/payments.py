@@ -35,7 +35,15 @@ async def payments(
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
     print("authorized")
-    print("sending to router")
+    print("[GATEWAY]: sending to fraud")
+    fraud = await send_to_fraud(
+        merchant_id=api_key_record.merchant_id,
+        payment_request=req
+    )
+    if fraud["status"] == "blocked":
+        return fraud
+    print("passed")
+    print("[GATEWAY]: sending to router")
     router_response = await send_to_router(
         merchant_id=api_key_record.merchant_id,
         payment_request=req
@@ -65,6 +73,24 @@ async def send_to_router(
 
         return resp.json()
 
+async def send_to_fraud(
+        merchant_id: str,
+        payment_request: PaymentRequest,
+):
+    FRAUD_URL = os.getenv("FRAUD_URL", "http://fraud:8004/fraud")
 
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{FRAUD_URL}",
+                json={
+                    **payment_request.model_dump(),
+                    "merchant-id": str(merchant_id)
+                },
+                timeout=5,
+            )
+        except Exception as e:
+            return {"error": str(e)}
 
+        return resp.json()
 

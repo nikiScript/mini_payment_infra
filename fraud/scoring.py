@@ -1,19 +1,18 @@
-from pydantic import BaseModel
+from models import FraudFeatures
 
-class FraudFeatures(BaseModel):
-    velocity_10m: int
-    total_24h: int
-    high_value_count: int
-    geo_mismatch: int
-    round_amount_count: int
+def fraud_score(f: FraudFeatures):
 
-def fraud_score(features: FraudFeatures):
-
-    total_score = (
-        features.velocity_10m * 12 +
-        features.high_value_count * 15 +
-        features.geo_mismatch * 25 +
-        features.round_amount_count * 5
-    )
+    # adds up to 1 max is 100
+    total_score = int(100 * (
+        normalize(f.velocity_2m) * 0.35 +
+        normalize(f.velocity_10m) * 0.25 +
+        normalize(f.high_value_count) * 0.20 +
+        normalize(f.geo_mismatch) * 0.15 +
+        normalize(f.round_amount_count) * 0.05
+    ))
 
     return total_score
+
+def normalize(x):
+    return x / (1 + x)
+

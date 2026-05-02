@@ -13,7 +13,6 @@ router = APIRouter()
 class RegisterName(BaseModel):
     name: str
 
-
 @router.post("/register")
 async def register(
         req: RegisterName,

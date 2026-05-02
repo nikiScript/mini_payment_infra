@@ -1,50 +1,46 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from database import get_db
 from rules import enforce_rules
 from scoring import fraud_score
 from query_transaction import get_transactions_data
-
-class FraudFeatures(BaseModel):
-    velocity_10m: int
-    total_24h: int
-    high_value_count: int
-    geo_mismatch: int
-    round_amount_count: int
-
-class Request(BaseModel):
-    merchant_id: str
-    country: str
+from models import FraudRequest, FraudFeatures, FraudResponse
 
 app = FastAPI()
 
 @app.post("/fraud")
 async def fraud(
-        req: Request,
-        db: AsyncSession
+        req: FraudRequest,
+        db: AsyncSession = Depends(get_db)
 ):
     resp = await get_transactions_data(req.merchant_id, req.country, db)
     features = FraudFeatures(**resp)
     review = enforce_rules(features)
-
-    if review.status == "blocked":
-        return review
-
     total_score = fraud_score(features)
 
-    if total_score > 150:
-        return {
-            "status": "blocked",
-            "reason": "high fraud score",
-        }
-    if 60 < total_score < 150:
-        return {
-            "status": "review",
-            "reason": "suspicious activity",
-        }
+    if review["status"] == "blocked":
+        return FraudResponse(
+            status=review["status"],
+            fraud_score=total_score,
+            reasons=[review["reason"]]
+        )
+
+    if total_score > 80:
+        return FraudResponse(
+            status="blocked",
+            fraud_score=total_score,
+            reasons=["high fraud score"]
+        )
+    if total_score > 50:
+        return FraudResponse(
+            status="review",
+            fraud_score=total_score,
+            reasons=["high fraud score"]
+        )
     else:
-        return {
-            "status": "authorized",
-            "reason": "low risk"
-        }
+        return FraudResponse(
+            status="allowed",
+            fraud_score=total_score,
+            reasons=["low risk"]
+        )
