@@ -4,7 +4,6 @@ import os
 import httpx
 from typing import List, Optional
 
-
 from fastapi import FastAPI, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +14,6 @@ from stats_queries import query_stats
 from transaction_queries import register_transaction, update_transaction_status
 from stats_queries import update_provider_stats
 from operator import itemgetter
-
 
 
 class PaymentRequest(BaseModel):
@@ -37,7 +35,6 @@ app = FastAPI()
 
 @app.post("/router")
 async def router(
-
         req: PaymentRequest,
         merchant_id: str = Header(...),
         db: AsyncSession = Depends(get_db)
@@ -56,7 +53,7 @@ async def router(
 
     for p in sorted_providers:
 
-        print(f"[ROUTER]: Trying {p["provider"]}")
+        print(f"[ROUTER]: Trying {p['provider']}")
         provider_name = p["provider"]
         attempted.append(provider_name)
         result = await call_provider(provider_name, req)
