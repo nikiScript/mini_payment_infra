@@ -16,7 +16,6 @@ class ChargeResponse(BaseModel):
     currency: str
     processed_at: str
 
-
 class PaymentProvider(ABC):
     name: str
 

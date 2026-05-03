@@ -49,7 +49,6 @@ async def payments(
         payment_request=req
     )
     return router_response
-    # send to router
 
 
 async def send_to_router(

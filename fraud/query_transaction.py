@@ -13,7 +13,7 @@ async def get_transactions_data(
         text(
             '''
             SELECT
-            
+
                 -- velocity 2m
                 COUNT(*) FILTER (
                     WHERE created_at > NOW() - INTERVAL '2 minutes'

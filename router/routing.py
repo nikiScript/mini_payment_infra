@@ -39,7 +39,7 @@ async def router(
         print(f"[ROUTER]: Trying {p['provider']}")
         provider_name = p["provider"]
         attempted.append(provider_name)
-        result = await call_provider(provider_name, req)
+        result = await call_provider(provider_name, tx.id, req)
 
         if result["status"] == "success":
             final_provider = Provider(provider_name)
@@ -98,6 +98,7 @@ def score_providers(stats_entry):
 
 async def call_provider(
     provider_name: str,
+    transaction_id: str,
     payment: PaymentRequest
 ):
     # start measuring latency
@@ -110,6 +111,7 @@ async def call_provider(
         try:
             resp = await client.post(
                 f"{url}",
+                params={"transaction_id": str(transaction_id)},
                 json={
                     "amount": payment.amount,
                     "currency": payment.currency,
@@ -117,6 +119,9 @@ async def call_provider(
                 timeout=5,
             )
             latency_ms = (time.monotonic() - start) * 1000
+
+            print(f"[ROUTER]: Provider {provider_name} responded {resp.status_code}: {resp.text}")
+
             if resp.status_code != 200:
                 return {
                     "status": "failed",

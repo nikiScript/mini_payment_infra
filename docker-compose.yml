@@ -15,7 +15,6 @@ services:
             timeout: 5s
             retries: 5
 
-    
     redis:
         image: redis:7
         ports:
@@ -49,7 +48,6 @@ services:
             postgres:
                 condition: service_healthy
 
-
     gateway:
         build: ./gateway
         ports:
@@ -64,6 +62,14 @@ services:
         build: ./fraud
         ports:
             - "8004:8004"
+        env_file:
+            -   .env
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    worker:
+        build: ./reconciliation
         env_file:
             -   .env
         depends_on:

@@ -10,7 +10,7 @@ async def create_routing_decision(
 ):
     router = RoutingDecisions(
         transaction_id=transaction.id,
-        provider_chosen=req.provider.value,
+        provider_chosen=req.provider.value if req.provider else None,
         reason=req.reason,
         attempted_providers=req.attempted_providers,
     )
