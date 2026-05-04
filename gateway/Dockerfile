@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD sh -c "alembic -c gateway/db/alembic.ini upgrade head && uvicorn gateway:app --host 0.0.0.0 --port 8003"
+CMD sh -c "uvicorn gateway:app --host 0.0.0.0 --port 8003"

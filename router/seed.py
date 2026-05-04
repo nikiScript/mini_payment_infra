@@ -2,10 +2,11 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+from db.migrations.schemas.payments import ProviderStats
+
+# we need to seed our db with initial stats of our providers
 
 load_dotenv()
-
-from db.migrations.schemas.payments import ProviderStats, Base
 
 engine = create_engine(os.environ["DB_URL_SYNC_LOCAL"])
 
@@ -24,4 +25,3 @@ with Session(engine) as session:
         else:
             print(f"Skipped {s['provider_name']} — already exists")
     session.commit()
-    print("Done")

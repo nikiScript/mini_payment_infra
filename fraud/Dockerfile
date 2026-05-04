@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["uvicorn", "fraud:app", "--host", "0.0.0.0", "--port", "8004"]
+CMD sh -c "uvicorn fraud:app --host 0.0.0.0 --port 8004"

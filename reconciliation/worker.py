@@ -33,7 +33,7 @@ async def reconcile(db: AsyncSession):
     missing = 0
     all_settlement_ids = set()
 
-    # checking every provider not recommended
+    # checking every provider is not recommended
     # but for this demo it will suffice
     for provider in PROVIDERS:
         print(f"[WORKER]: Fetching settlements for {provider}")
