@@ -261,5 +261,5 @@ Runs automatically every 60 seconds.
 * Machine learning fraud models
 * Auto-repair mechanisms for mismatches
 * Rate limiting + abuse protection
-
+* Redis
 

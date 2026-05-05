@@ -8,7 +8,7 @@ from db.migrations.schemas.payments import ProviderStats
 
 load_dotenv()
 
-engine = create_engine(os.environ["DB_URL_SYNC_LOCAL"])
+engine = create_engine(os.environ["DB_URL"])
 
 SEED_STATS = [
     {"provider_name": "stripe",  "success_rate": 0.97, "avg_latency_ms": 250, "fee_percentage": 0.029},

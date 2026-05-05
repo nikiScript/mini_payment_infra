@@ -91,7 +91,7 @@ def score_providers(stats_entry):
 
     # weighted model
     return (
-        0.6 * success +
+        0.60 * success +
         0.25 * latency +
         0.15 * cost
     )
